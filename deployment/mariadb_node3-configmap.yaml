@@ -1,0 +1,186 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mariadb-3-configmap
+data:
+  05-skipcache.cnf: |
+    [mariadb]
+    host-cache-size=0
+    skip-name-resolve
+  50-server.cnf: |
+    #
+    # These groups are read by MariaDB server.
+    # Use it for options that only the server (but not clients) should see
+
+    # this is read by the standalone daemon and embedded servers
+    [server]
+
+    # this is only for the mysqld standalone daemon
+    [mysqld]
+
+    #
+    # * Basic Settings
+    #
+
+    #user                    = mysql
+    pid-file                = /run/mysqld/mysqld.pid
+    basedir                 = /usr
+    #datadir                 = /var/lib/mysql
+    #tmpdir                  = /tmp
+
+    # Broken reverse DNS slows down connections considerably and name resolve is
+    # safe to skip if there are no "host by domain name" access grants
+    #skip-name-resolve
+
+    # Instead of skip-networking the default is now to listen only on
+    # localhost which is more compatible and is not less secure.
+    #bind-address            = 127.0.0.1
+
+    #
+    # * Fine Tuning
+    #
+
+    #key_buffer_size        = 128M
+    #max_allowed_packet     = 1G
+    #thread_stack           = 192K
+    #thread_cache_size      = 8
+    # This replaces the startup script and checks MyISAM tables if needed
+    # the first time they are touched
+    #myisam_recover_options = BACKUP
+    #max_connections        = 100
+    #table_cache            = 64
+
+    #
+    # * Logging and Replication
+    #
+
+    # Both location gets rotated by the cronjob.
+    # Be aware that this log type is a performance killer.
+    # Recommend only changing this at runtime for short testing periods if needed!
+    #general_log_file       = /var/log/mysql/mysql.log
+    #general_log            = 1
+
+    # When running under systemd, error logging goes via stdout/stderr to journald
+    # and when running legacy init error logging goes to syslog due to
+    # /etc/mysql/conf.d/mariadb.conf.d/50-mysqld_safe.cnf
+    # Enable this if you want to have error logging into a separate file
+    #log_error = /var/log/mysql/error.log
+    # Enable the slow query log to see queries with especially long duration
+    #slow_query_log_file    = /var/log/mysql/mariadb-slow.log
+    #long_query_time        = 10
+    #log_slow_verbosity     = query_plan,explain
+    #log-queries-not-using-indexes
+    #min_examined_row_limit = 1000
+
+    # The following can be used as easy to replay backup logs or for replication.
+    # note: if you are setting up a replication slave, see README.Debian about
+    #       other settings you may need to change.
+    #server-id              = 1
+    #log_bin                = /var/log/mysql/mysql-bin.log
+    expire_logs_days        = 10
+    #max_binlog_size        = 100M
+
+    #
+    # * SSL/TLS
+    #
+
+    # For documentation, please read
+    # https://mariadb.com/kb/en/securing-connections-for-client-and-server/
+    #ssl-ca = /etc/mysql/cacert.pem
+    #ssl-cert = /etc/mysql/server-cert.pem
+    #ssl-key = /etc/mysql/server-key.pem
+    #require-secure-transport = on
+
+    #
+    # * Character sets
+    #
+
+    # MySQL/MariaDB default is Latin1, but in Debian we rather default to the full
+    # utf8 4-byte character set. See also client.cnf
+    character-set-server  = utf8mb4
+    collation-server      = utf8mb4_general_ci
+
+    #
+    # * InnoDB
+    #
+
+    # InnoDB is enabled by default with a 10MB datafile in /var/lib/mysql/.
+    # Read the manual for more InnoDB related options. There are many!
+    # Most important is to give InnoDB 80 % of the system RAM for buffer use:
+    # https://mariadb.com/kb/en/innodb-system-variables/#innodb_buffer_pool_size
+    #innodb_buffer_pool_size = 8G
+
+    # this is only for embedded server
+    [embedded]
+
+    # This group is only read by MariaDB servers, not by MySQL.
+    # If you use the same .cnf file for MySQL and MariaDB,
+    # you can put MariaDB-only options here
+    [mariadb]
+
+    # This group is only read by MariaDB-10.5 servers.
+    # If you use the same .cnf file for MariaDB of different versions,
+    # use this group for options that older servers don't understand
+    [mariadb-10.5]
+  60-galera.cnf: |
+    ##
+    ## * Galera-related settings
+    ##
+    ## See the examples of server wsrep.cnf files in /usr/share/mysql
+    ## and read more at https://mariadb.com/kb/en/galera-cluster/
+    #
+    #[galera]
+    ## Mandatory settings
+    #wsrep_on                 = ON
+    #wsrep_cluster_name       = "MariaDB Galera Cluster"
+    #wsrep_cluster_address    = gcomm://mariadb-0.mariadb,mariadb-1.mariadb,mariadb-2.mariadb
+    #binlog_format            = row
+    #default_storage_engine   = InnoDB
+    #innodb_autoinc_lock_mode = 2
+    #
+    ## Allow server to accept connections on all interfaces.
+    #bind-address = 0.0.0.0
+    #
+    ## Optional settings
+    #wsrep_slave_threads = 1
+    #innodb_flush_log_at_trx_commit = 0
+
+    [galera]
+    user = mysql
+    bind-address = 0.0.0.0
+
+    default_storage_engine = InnoDB
+    binlog_format = ROW
+    innodb_autoinc_lock_mode = 2
+    innodb_flush_log_at_trx_commit = 0
+    query_cache_size = 0
+    query_cache_type = 0
+
+    # MariaDB Galera settings
+    wsrep_on=ON
+    wsrep_provider=/usr/lib/galera/libgalera_smm.so
+    wsrep_sst_method=rsync
+
+    # Cluster settings (automatically updated)
+    wsrep_cluster_address="gcomm://mariadb-node1,mariadb-node2,mariadb-node3"
+    wsrep_cluster_name=galera
+    #wsrep_node_address=mariadb-node3
+  enable_encryption.preset: |
+    #
+    # !include this file into your my.cnf (or any of *.cnf files in /etc/my.cnf.d)
+    # and it will enable data at rest encryption. This is a simple way to
+    # ensure that everything that can be encrypted will be and your
+    # data will not leak unencrypted.
+    #
+    # DO NOT EDIT THIS FILE! On MariaDB upgrades it might be replaced with a
+    # newer version and your edits will be lost. Instead, add your edits
+    # to the .cnf file after the !include directive.
+    #
+    # NOTE that you also need to install an encryption plugin for the encryption
+    # to work. See https://mariadb.com/kb/en/mariadb/data-at-rest-encryption/#encryption-key-management
+    #
+    [mariadb]
+    aria-encrypt-tables
+    encrypt-binlog
+    encrypt-tmp-disk-tables
+                                                                      

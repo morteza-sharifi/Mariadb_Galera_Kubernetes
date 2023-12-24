@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mariadb-node2
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mariadb-node2
+  template:
+    metadata:
+      labels:
+        app: mariadb-node2
+    spec:
+      containers:
+      - name: mariadb
+        image: mariadb:10.5
+        ports:
+        - containerPort: 3306
+        - containerPort: 4444
+        - containerPort: 4567
+        - containerPort: 4568
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mariadb-secret
+              key: mariadb-root-password
+        volumeMounts:
+        - name: mariadb-data
+          mountPath: /var/lib/mysql
+        - name: mariadb-conf
+          mountPath: /etc/mysql/mariadb.conf.d/
+      volumes:
+      - name: mariadb-data
+        persistentVolumeClaim:
+          claimName: mariadb-node2-data
+      - name: mariadb-conf
+        configMap:
+          name: mariadb-2-configmap
